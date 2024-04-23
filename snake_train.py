@@ -22,7 +22,7 @@ agent = SnakeAgent(
 )
 
 # Load the trained agent's weights
-agent.model.load_weights("Reinforcement_Learning/trained_agent.weights.h5")
+agent.model.load_weights("Agent/trained_agent.weights.h5")
 
 # Training loop
 for episode in range(EPISODES):
@@ -39,37 +39,32 @@ for episode in range(EPISODES):
         state=env.get_state()
         print('current state : ',state)
 
-        # Select an action using the agent's policy
         action = agent.get_action(state,epsilon)
 
-        # Take the action and observe the next state, reward, and done flag
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, done, _ = env.step(action) # Take the action and observe the next state, reward, and done flag
 
-        # Update the agent's Q-table
+        
         reshaped_state = np.reshape(state, (1, agent.state_size))
         reshaped_next_state = np.reshape(next_state, (1, agent.state_size))
-        agent.train_model(reshaped_state, action, reward, reshaped_next_state, done)
+        agent.train_model(reshaped_state, action, reward, reshaped_next_state, done) # Update the agent's Q-table
 
-        # Update the state
+        # Update variables
         total_reward += reward
         steps += 1
-        env.render(False,total_reward,15)
+        env.render(False,total_reward,15) # Usually not rendering during training.
     
     print(f"Episode: {episode}, Steps: {steps}, Reward: {total_reward}")
 
 # Save the trained agent
-agent.model.save("Reinforcement_Learning/trained_agent.h5")
+agent.model.save("trained_agent.h5")
 
 # Save the trained agent's weights
-agent.model.save_weights("Reinforcement_Learning/trained_agent.weights.h5")
+agent.model.save_weights("trained_agent.weights.h5")
 
-# Print the model's architecture
-agent.model.summary()
-
-if input("Test ?")=='y':
+if input("Test ? (y or n) : ")=='y':
     # Test the agent
     for episode in range(50):
-        env.reset(1000,8)
+        env.reset(1000,8) # steps allowed, size of the board
         state = env.get_state()
         done = False
         steps = 0

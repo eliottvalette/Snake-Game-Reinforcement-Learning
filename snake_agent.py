@@ -24,16 +24,16 @@ class SnakeAgent:
         return model
 
     def get_action(self, state, epsilon):
-        if np.random.rand() <= epsilon:
+        if np.random.rand() <= epsilon: # exploration
             return np.random.randint(self.action_size)
-        q_values = self.model.predict(np.reshape(state, (1, self.state_size)))
+        q_values = self.model.predict(np.reshape(state, (1, self.state_size))) # exploitation
         return np.argmax(q_values[0])
 
     def train_model(self, state, action, reward, next_state, done):
         target = reward
         if not done:
-            target += self.gamma * np.max(self.model.predict(np.reshape(next_state, (1, self.state_size)))[0])
+            target += self.gamma * np.max(self.model.predict(np.reshape(next_state, (1, self.state_size)))[0]) # Bellman Equation
 
         target_vec = self.model.predict(np.reshape(state, (1, self.state_size)))
         target_vec[0][action] = target
-        self.model.fit(np.reshape(state, (1, self.state_size)), target_vec, epochs=1, verbose=0)
+        self.model.fit(np.reshape(state, (1, self.state_size)), target_vec, epochs=1, verbose=0) # Train the model
