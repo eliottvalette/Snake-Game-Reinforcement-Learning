@@ -2,242 +2,346 @@
 import pygame
 import numpy as np
 import random as rd
+import time
+from hard_code_pattern_11 import pattern_11
+
+GLOBAL_N = 21
+INITIAL_WALLS = 0
+
+# CONSTANTS
+UP = 0
+RIGHT = 1
+DOWN = 2
+LEFT = 3
+STRAIGHT = 0
+LEFT_TURN = -1
+RIGHT_TURN = 1
 
 class SnakeGame:
     def __init__(self):
         pygame.font.init()
-        self.n = 4
-        self.CELL_SIZE = 80
-        self.WINDOW_WIDTH = self.n * self.CELL_SIZE
-        self.WINDOW_HEIGHT = self.n * self.CELL_SIZE
+        self.n = GLOBAL_N
+        self.CELL_SIZE = 800 // GLOBAL_N
+        self.WINDOW_WIDTH = self.CELL_SIZE * self.n
+        self.WINDOW_HEIGHT = self.CELL_SIZE * self.n
         self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
-        self.position = (self.n//2 * self.CELL_SIZE, self.n//2 * self.CELL_SIZE) # head position
-        self.snake = [self.position] # body positions
+        self.position = (rd.randint(1, GLOBAL_N-1) * self.CELL_SIZE, rd.randint(1, GLOBAL_N-1) * self.CELL_SIZE) # head position
+        self.snake = self.create_initial_snake(length = 1)
+        self.walls = [] 
         self.food = self.generate_food()
         self.steps_taken = 0
         self.visited = [] # cells visited by the snake
-        self.max_steps = 100
-        self.direction = 'RIGHT' # starts lookig right
+        self.max_steps = 200
+        self.direction = RIGHT # starts lookig right
         self.previous_action = [1,1] # 2 previous actions, initial set as straight - straight
+        self.epsilon = 1
+        self.step_after_food = 0
+        self.viable_pattern = pattern_11
+        for _ in range (INITIAL_WALLS):
+            self.add_wall()
+
+    def reset(self,max_steps, N, length = 1):
+        self.n = N
+        self.CELL_SIZE = 800 // GLOBAL_N
+        self.WINDOW_WIDTH = self.CELL_SIZE * self.n
+        self.WINDOW_HEIGHT = self.CELL_SIZE * self.n
+        self.position = (rd.randint(1, GLOBAL_N-1) * self.CELL_SIZE, rd.randint(1, GLOBAL_N-1) * self.CELL_SIZE) # head position
+        self.snake = self.create_initial_snake(length)
+        self.walls = []
+        self.food = self.generate_food()
+        self.steps_taken = 0
+        self.visited = []
+        self.max_steps = max_steps
+        self.direction = RIGHT
+        self.previous_action = [1,1]
+        self.step_after_food = 0
+        for _ in range (INITIAL_WALLS):
+            self.add_wall()
+
+    def create_initial_snake(self, length=1):
+        initial_snake = [self.position]
+        for i in range(1, length):
+            initial_snake.append((self.position[0] - i * self.CELL_SIZE, self.position[1]))
+        return initial_snake
 
     def generate_food(self):
         while True:
             food = (rd.randint(0, self.n - 1) * self.CELL_SIZE, rd.randint(0, self.n - 1) * self.CELL_SIZE)
-            if food not in self.snake:
+            if food not in self.snake and food not in self.walls:
                 return food
 
     def lost(self): # Got Outside the Map or Roll over
-        return not (0 <= self.position[0] < self.WINDOW_WIDTH) or not (0 <= self.position[1] < self.WINDOW_HEIGHT) or self.position in self.snake[1:] 
+        out_in_width = not (0 <= self.position[0] < self.WINDOW_WIDTH)
+        out_in_height = not (0 <= self.position[1] < self.WINDOW_HEIGHT)
+        rolled_over = self.position in self.snake[1:] 
+        banged_a_wall = self.position in self.walls
+        return out_in_width or out_in_height or rolled_over or banged_a_wall
     
-    # Maybe go_right, go_left and go_straight can be refactored
-    def go_right(self): 
-        if self.direction == 'UP':
-            self.position = (self.position[0] + self.CELL_SIZE, self.position[1])
-            self.direction = 'RIGHT'
-        elif self.direction == 'DOWN':
-            self.position = (self.position[0] - self.CELL_SIZE, self.position[1])
-            self.direction = 'LEFT'
-        elif self.direction == 'RIGHT':
-            self.position = (self.position[0], self.position[1] + self.CELL_SIZE)
-            self.direction = 'DOWN'
-        elif self.direction == 'LEFT':
-            self.position = (self.position[0], self.position[1] - self.CELL_SIZE)
-            self.direction = 'UP'
 
-    def go_left(self):
-        if self.direction == 'UP':
-            self.position = (self.position[0] - self.CELL_SIZE, self.position[1])
-            self.direction = 'LEFT'
-        elif self.direction == 'DOWN':
-            self.position = (self.position[0] + self.CELL_SIZE, self.position[1])
-            self.direction = 'RIGHT'
-        elif self.direction == 'LEFT':
-            self.position = (self.position[0], self.position[1] + self.CELL_SIZE)
-            self.direction = 'DOWN'
-        elif self.direction == 'RIGHT':
-            self.position = (self.position[0], self.position[1] - self.CELL_SIZE)
-            self.direction = 'UP'
+    def add_wall(self, max_attempts=100):
+        attempts = 0
+        while attempts < max_attempts:
+            (x_wall, y_wall) = rd.choice(self.viable_pattern)
+            wall = (x_wall * self.CELL_SIZE, y_wall * self.CELL_SIZE)
+            if wall not in self.snake and wall != self.food and wall not in self.walls:
+                self.walls.append(wall)
+                break
+            attempts += 1
 
-    def go_straight(self):
-        if self.direction == 'UP':
-            self.position = (self.position[0], self.position[1] - self.CELL_SIZE)
-            self.direction = 'UP'
-        elif self.direction == 'LEFT':
-            self.position = (self.position[0] - self.CELL_SIZE, self.position[1])
-            self.direction = 'LEFT'
-        elif self.direction == 'RIGHT':
-            self.position = (self.position[0] + self.CELL_SIZE, self.position[1])
-            self.direction = 'RIGHT'
-        elif self.direction == 'DOWN':
-            self.position = (self.position[0], self.position[1] + self.CELL_SIZE)
-            self.direction = 'DOWN'
+    def move(self, action):
+        direction_vectors = {
+            UP: (0, -1),
+            RIGHT: (1, 0),
+            DOWN: (0, 1),
+            LEFT: (-1, 0)
+        }
+
+        # Convert actions to changes in direction
+        action_to_turn = {
+            'RIGHT': RIGHT_TURN,
+            'LEFT': LEFT_TURN,
+            'STRAIGHT': STRAIGHT
+        }
+
+        self.direction = (self.direction + action_to_turn[action]) % 4
+        movement = direction_vectors[self.direction]
+
+        self.position = (
+            self.position[0] + movement[0] * self.CELL_SIZE,
+            self.position[1] + movement[1] * self.CELL_SIZE
+        )
+
+    def get_direction_array(self):
+        array = np.ones(4) * 0.01
+        direction_idx = self.direction
+        array[direction_idx] = 1
+        return array
+
+    def get_danger(self):
+        # Define relative position changes for left, ahead, and right based on the current direction
+        danger_offsets = {
+            UP: [(-1, 0), (0, -1), (1, 0)],    # Left, ahead, right relative to UP
+            RIGHT: [(0, -1), (1, 0), (0, 1)],  # Left, ahead, right relative to RIGHT
+            DOWN: [(1, 0), (0, 1), (-1, 0)],   # Left, ahead, right relative to DOWN
+            LEFT: [(0, 1), (-1, 0), (0, -1)]   # Left, ahead, right relative to LEFT
+        }
+
+        # Get the offsets relative to the current direction
+        relative_positions = danger_offsets[self.direction]
+        
+        danger = []
+        
+        # Check each of the three positions: left, ahead, right
+        for dx, dy in relative_positions:
+            new_x = self.position[0] + dx * self.CELL_SIZE
+            new_y = self.position[1] + dy * self.CELL_SIZE
+            
+            # Check if there's danger from the wall, snake body, or being out of bounds
+            wall_danger = not (0 <= new_x < self.WINDOW_WIDTH and 0 <= new_y < self.WINDOW_HEIGHT)
+            snake_body_danger = (new_x, new_y) in self.snake[1:]  # Exclude head from snake body check
+            
+            # Mark danger if the new position is out of bounds, a wall, or the snake's body
+            danger.append(int(wall_danger))
+            danger.append(int(snake_body_danger))          
+        return np.array(danger)
+
+
     
-    def get_direction_index(self):
-        if self.direction == 'UP':
-            return 0
-        elif self.direction == 'RIGHT':
-            return 1
-        elif self.direction == 'DOWN':
-            return 2
-        elif self.direction == 'LEFT':
-            return 3
-      
-    # That one too
-    def get_danger(self): # is the wall on the left - ahead - right - self on the left - self ahead - self on the right
-        if self.direction == 'UP':
-            left_wall = int(self.position[0] // self.CELL_SIZE == 0)
-            ahead_wall = int(self.position[1] // self.CELL_SIZE == 0)
-            right_wall = int(self.n - 1 - self.position[0] // self.CELL_SIZE == 0)
-            left_self = int((self.position[0] - self.CELL_SIZE, self.position[1]) in self.snake)
-            ahead_self = int((self.position[0], self.position[1] - self.CELL_SIZE) in self.snake)
-            right_self = int((self.position[0] + self.CELL_SIZE, self.position[1]) in self.snake)
-            return np.array([left_wall, ahead_wall, right_wall, left_self, ahead_self, right_self])
-        
-        elif self.direction == 'DOWN':
-            left_wall = int(self.n - 1 - self.position[0] // self.CELL_SIZE == 0)
-            ahead_wall = int(self.n - 1 - self.position[1] // self.CELL_SIZE == 0)
-            right_wall = int(self.position[0] // self.CELL_SIZE == 0)
-            left_self = int((self.position[0] + self.CELL_SIZE, self.position[1]) in self.snake)
-            ahead_self = int((self.position[0], self.position[1] + self.CELL_SIZE) in self.snake)
-            right_self = int((self.position[0] - self.CELL_SIZE, self.position[1]) in self.snake)
-            return np.array([left_wall, ahead_wall, right_wall, left_self, ahead_self, right_self])
-        
-        elif self.direction == 'LEFT':
-            left_wall = int(self.n - 1 - self.position[1] // self.CELL_SIZE == 0)
-            ahead_wall = int(self.position[0] // self.CELL_SIZE == 0)
-            right_wall = int(self.position[1] // self.CELL_SIZE == 0)
-            left_self = int((self.position[0], self.position[1] + self.CELL_SIZE) in self.snake)
-            ahead_self = int((self.position[0] - self.CELL_SIZE, self.position[1]) in self.snake)
-            right_self = int((self.position[0], self.position[1] - self.CELL_SIZE) in self.snake)
-            return np.array([left_wall, ahead_wall, right_wall, left_self, ahead_self, right_self])
-        
-        elif self.direction == 'RIGHT':
-            left_wall = int(self.position[1] // self.CELL_SIZE == 0)
-            ahead_wall = int(self.n - 1 - self.position[0] // self.CELL_SIZE == 0)
-            right_wall = int(self.n - 1 - self.position[1] // self.CELL_SIZE == 0)
-            left_self = int((self.position[0], self.position[1] - self.CELL_SIZE) in self.snake)
-            ahead_self = int((self.position[0] + self.CELL_SIZE, self.position[1]) in self.snake)
-            right_self = int((self.position[0], self.position[1] + self.CELL_SIZE) in self.snake)
-            return np.array([left_wall, ahead_wall, right_wall, left_self, ahead_self, right_self])   
-    
-    def get_where_food(self): # is it on the left, is it ahead , is it on the right, is it behind
-        if self.direction == 'UP':
-            return np.array([int(self.food[0] // self.CELL_SIZE - self.position[0] // self.CELL_SIZE < 0), int(self.position[1] // self.CELL_SIZE - self.food[1] // self.CELL_SIZE > 0), int(self.food[0] // self.CELL_SIZE - self.position[0] // self.CELL_SIZE > 0),int(self.position[1] // self.CELL_SIZE - self.food[1] // self.CELL_SIZE < 0) ])
-        elif self.direction == 'DOWN':
-            return np.array([int(self.position[0] // self.CELL_SIZE - self.food[0] // self.CELL_SIZE > 0), int(self.position[1] // self.CELL_SIZE - self.food[1] // self.CELL_SIZE < 0), int(self.position[0] // self.CELL_SIZE - self.food[0] // self.CELL_SIZE < 0), int(self.position[1] // self.CELL_SIZE - self.food[1] // self.CELL_SIZE > 0)])
-        elif self.direction == 'LEFT':
-            return np.array([int(self.food[1] // self.CELL_SIZE - self.position[1] // self.CELL_SIZE > 0 ), int(self.position[0] // self.CELL_SIZE - self.food[0] // self.CELL_SIZE > 0), int(self.food[1] // self.CELL_SIZE - self.position[1] // self.CELL_SIZE < 0 ), int(self.position[0] // self.CELL_SIZE - self.food[0] // self.CELL_SIZE < 0) ])
-        elif self.direction == 'RIGHT':
-            return np.array([int(self.position[1] // self.CELL_SIZE - self.food[1] // self.CELL_SIZE < 0 ), int(self.food[0] // self.CELL_SIZE - self.position[0] // self.CELL_SIZE < 0 ), int(self.position[1] // self.CELL_SIZE - self.food[1] // self.CELL_SIZE > 0 ), int(self.food[0] // self.CELL_SIZE - self.position[0] // self.CELL_SIZE > 0 )])
+
+    def get_where_food(self):
+        # Calculate the relative position of the food with respect to the head of the snake
+        relative_food_x = self.food[0] - self.position[0]
+        relative_food_y = self.food[1] - self.position[1]
+
+        # Directional offsets to check for food relative to the snake's current direction
+        direction_offsets = {
+            UP: [(0, -1), (-1, 0), (1, 0)],    # Ahead, left, right when facing UP
+            RIGHT: [(1, 0), (0, -1), (0, 1)],  # Ahead, left, right when facing RIGHT
+            DOWN: [(0, 1), (1, 0), (-1, 0)],   # Ahead, left, right when facing DOWN
+            LEFT: [(-1, 0), (0, 1), (0, -1)]   # Ahead, left, right when facing LEFT
+        }
+
+        # Get the directional offsets based on the current direction of the snake
+        relative_positions = direction_offsets[self.direction]
+
+        where_food = []
+
+        # Check if the food is ahead, to the left, or to the right
+        for dx, dy in relative_positions:
+            food_ahead = (relative_food_x * dx >= 0) and (relative_food_y * dy >= 0)
+            where_food.append(int(food_ahead))
+
+        return np.array(where_food)
+
+
+
+    def shrink_matrix(self, matrix):
+        shrink = (self.n - 7) // 2
+        if shrink != 0 :
+            matrix = matrix[shrink : -shrink, shrink : -shrink]
+        return matrix
+
+    def get_board_matrix(self):
+        board = np.ones((self.n, self.n))*0.01
+
+        if not self.lost():
+
+            for i, j in self.snake[1:]:
+                resized_i, resized_j = (i // self.CELL_SIZE, j // self.CELL_SIZE) 
+                board[resized_j, resized_i] = -1
+            
+            for i, j in self.walls:
+                resized_i, resized_j = (i // self.CELL_SIZE, j // self.CELL_SIZE) 
+                board[resized_j, resized_i] = -1
+            
+            board[self.position[1] // self.CELL_SIZE , self.position[0] // self.CELL_SIZE] = 1
+
+            board[self.food[1] // self.CELL_SIZE , self.food[0] // self.CELL_SIZE] = 1
+
+        center_x = center_y = self.n // 2
+        head_x, head_y = self.position[1] // self.CELL_SIZE, self.position[0]// self.CELL_SIZE
+        distance_to_center_x, distance_to_center_y = head_x - center_x, head_y - center_y
+
+        shifted_board = np.ones((self.n, self.n))*(-1)
+        for i in range(self.n):
+            for j in range(self.n):
+                new_i, new_j = i - distance_to_center_x, j - distance_to_center_y
+                if 0 <= new_i < self.n and 0 <= new_j < self.n:
+                    shifted_board[new_i, new_j] = board[i, j]
+
+        number_of_rotation = self.direction
+        shifted_board = np.rot90(shifted_board, number_of_rotation)
+
+        shrink_matrix = self.shrink_matrix(shifted_board)
+
+        return shrink_matrix.tolist(), shrink_matrix
+
+    def calculate_wall_reward(self):
+        x, y = self.position
+        distance_left = x // self.CELL_SIZE  # Cells to the left wall
+        distance_right = (self.WINDOW_WIDTH - x - self.CELL_SIZE) // self.CELL_SIZE  # Cells to the right wall
+        distance_top = y // self.CELL_SIZE  # Cells to the top wall
+        distance_bottom = (self.WINDOW_HEIGHT - y - self.CELL_SIZE) // self.CELL_SIZE  # Cells to the bottom wall
+
+        min_distance = min(distance_left, distance_right, distance_top, distance_bottom)
+
+        if min_distance == 0:
+            reward = 10 
+        elif min_distance == 1:
+            reward = 5
+        elif min_distance == 2:
+            reward = 2
+        else:
+            reward = 0 
+
+
+        return reward
 
 
     def step(self, action):
-        reward=0
-        
+        reward = 0  # Base reward
+
         previous_distance_from_food = np.linalg.norm(np.array(self.position) - np.array(self.food))
 
+        # Move the snake based on the action
         if action == 0:  # Left
-            self.go_left()
+            self.move('LEFT')
         elif action == 1:  # Straight
-            self.go_straight()
+            self.move('STRAIGHT')
         elif action == 2:  # Right
-            self.go_right()
+            self.move('RIGHT')
 
         self.steps_taken += 1
 
         current_distance_from_food = np.linalg.norm(np.array(self.position) - np.array(self.food))
 
+        # Survival incentive: Give a small reward for staying alive
+        reward += 1  # Reward for each step survived
+
+        # Distance-based reward: Encourage moving towards food, but don't penalize moving away
+        if current_distance_from_food < previous_distance_from_food:
+            reward += 2  # Reward for moving closer to the food
+
         # Check if the snake has reached the food
         if self.position == self.food:
-            print("food reached")
+            print("Food reached!")
+            self.snake.insert(0, self.position)  # Extend the snake
+            self.food = self.generate_food()  # Generate new food
+            reward += 50  # Moderate reward for eating food
+            self.step_after_food = 0  # Reset step count after food
+            self.visited = []  # Reset visited positions after eating food
+        else:
             self.snake.insert(0, self.position)
-            self.food = self.generate_food()
-            self.visited = []
-            reward += 300 + 50*len(self.snake) # the longer the snake, the greater the reward 
+            self.snake.pop()  # Remove the tail if no food was eaten
 
-        else: # the longer the snake, the greater the reward move forward
-            self.snake.insert(0, self.position) 
-            self.snake.pop()
-
-        if not self.lost() and (self.position in self.visited) and current_distance_from_food >= previous_distance_from_food: # did the snake got further from food ?
-            done = False
-            reward -= 3
-        elif not self.lost() and (self.position not in self.visited) and current_distance_from_food < previous_distance_from_food: # did the snake got closer to food ?
+        # Penalize for revisiting the same position (to avoid loops)
+        if self.position in self.visited:
+            reward -= 2  # Small penalty for revisiting
+        else:
             self.visited.append(self.position)
-            done = False
-            reward += 7
-
-        if self.previous_action[0] == action and self.previous_action[1]==action and action != 1 : # Does the snake go left several times ?
-            done = False
-            reward -= 30 # Prevent the snake from going around in circles
-
-        if (self.steps_taken >= self.max_steps): # Stop the game but do not penalize
-            done = True
-            print('Did it reached max steps ? ', (self.steps_taken >= self.max_steps))
-
-        # elif len(self.snake)> 15:
-        #     print('#############')
-        #     print('###SUCCESS###')
-        #     print('#############')   
-        #     done = True
-        #     reward += 300
-
-        elif self.lost():
-            print("Game over")
-            print('Did it roll over ? ', self.position in self.snake[1:])
-            print('Did it got outside of the map?', not (0 <= self.position[0] < self.WINDOW_WIDTH) or not (0 <= self.position[1] < self.WINDOW_HEIGHT))
-            done = True
-            reward -= 100
         
+        wall_penalty = self.calculate_wall_reward()
+        reward += wall_penalty
+
+
+        # Check if the snake is done
+        if self.lost():
+            if self.position in self.snake[1:]:
+                print('Rolled over on itself!')
+            else:
+                print('Hit the wall!')
+            reward -= 400  # Penalty for losing
+            done = True
+
+        elif self.steps_taken >= self.max_steps:
+            done = True
+            print('Reached max steps')
         else:
             done = False
-            reward -= 4 # Thrust the snake to rush the food
-            print('Nothing happened')
-        
+
+        self.step_after_food += 1
         self.previous_action.pop(0)
         self.previous_action.append(action)
 
-        print('reward += ', reward)
         return self.get_state(), reward, done, {}
 
-    def reset(self,max_steps,N):
-        self.n = N
-        self.WINDOW_WIDTH = self.n * self.CELL_SIZE
-        self.WINDOW_HEIGHT = self.n * self.CELL_SIZE
-        self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
-        self.position = ((self.n//2)* self.CELL_SIZE, self.n//2*self.CELL_SIZE)
-        self.snake = [self.position]
-        self.food = self.generate_food()
-        self.steps_taken = 0
-        self.visited = []
-        self.max_steps = max_steps
-        self.direction = 'RIGHT'
-        self.previous_action = [1,1]
-
     def get_state(self):
-        distance_to_walls = self.get_danger() # is the wall on the left - ahead - right - self on the left - self ahead - self on the right
-        distance_to_food = self.get_where_food() # is it on the left, is it ahead, is it on the right, is it behind
-        snake_direction = np.array([self.get_direction_index()]) # 2 Last actions
-        full_state = np.concatenate((distance_to_walls,distance_to_food,snake_direction))
+        board_matrix = np.array(self.get_board_matrix()[0]).flatten() # 7x7 matrix (49)
+        distance_to_walls = self.get_danger() # is the wall on the left - ahead - right same for the snake itself (6)
+        distance_to_food = self.get_where_food() # is it on the ahead, is it right, is it on the left(3)
+        snake_direction = self.get_direction_array() # direction (4)
+        full_state = np.concatenate((board_matrix, distance_to_walls, distance_to_food, snake_direction)) 
+        
         return full_state
 
     def render(self,rendering,reward,clock):
         if rendering :
-            self.screen.fill((245, 245, 220)) # cream
+            self.screen.fill((211, 211, 211)) # cream
 
             # Draw the snake segments
             for i, segment in enumerate(self.snake):
-                segment_color = (60, 60, 60) if i == 0 else (20, 20, 20)  # Head is darker grey
+                segment_color = (27, 132, 10) if i == 0 else (62, 232, 0)  # Head is darker grey
                 pygame.draw.rect(self.screen, segment_color, (segment[0], segment[1], self.CELL_SIZE, self.CELL_SIZE))
                 pygame.draw.rect(self.screen, (0, 0, 0), (segment[0], segment[1], self.CELL_SIZE, self.CELL_SIZE), 2)  # Black outline
+
+            for i, wall in enumerate(self.walls):
+                wall_color = (0, 0, 0)
+                x, y = wall
+
+                # Draw the square
+                pygame.draw.rect(self.screen, wall_color, (x, y, self.CELL_SIZE, self.CELL_SIZE))
+
+                # Draw the cross
+                pygame.draw.line(self.screen, (255, 255, 255), (x, y), (x + self.CELL_SIZE, y + self.CELL_SIZE), 2)
+                pygame.draw.line(self.screen, (255, 255, 255), (x + self.CELL_SIZE, y), (x, y + self.CELL_SIZE), 2)
 
             # Draw the food
             pygame.draw.circle(self.screen, (255, 0, 0), (self.food[0] + self.CELL_SIZE // 2, self.food[1] + self.CELL_SIZE // 2), self.CELL_SIZE // 3)
 
             # Draw the text in the top right corner
             score_font = pygame.font.Font(pygame.font.get_default_font(), 14)
-            score_text = score_font.render(f"Current reward : {reward} Steps : {self.steps_taken} Score: {len(self.snake) - 1}", True, (0, 0, 0))
+            score_text = score_font.render(f"Current reward : {reward} Score: {len(self.snake) - 1} Randomness : {self.epsilon*100:.2f}%", True, (0, 0, 0))
             score_rect = score_text.get_rect()
             score_rect.topright = (self.WINDOW_WIDTH - 10, 10)
             self.screen.blit(score_text, score_rect)
@@ -253,24 +357,25 @@ class SnakeGame:
 
 """
 If you want to play the snake game yourself, set True.
-It's not the real snake game, you can go left, straight and right. It's like stop motion.
 Press s to get the state.
+
+Don't forget to reset it as False, otherwise the training will fail
 """
 
-if False :
+if __name__ == "__main__":
     # Initialize Pygame
     pygame.init()
 
     # Create the game environment
     game = SnakeGame()
 
-    running = True
+    run = True
     total_reward=0
     make_step=False
     done = False
 
     # Main loop
-    while running:
+    while run:
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -285,18 +390,23 @@ if False :
                 elif event.key == pygame.K_RIGHT:
                     action=2
                     make_step=True
+                elif event.key == pygame.K_w:
+                    game.add_wall()
                 elif event.key == pygame.K_s:
                     print('State :', game.get_state())
-                    print('snake : ',game.snake)
+                    print('Board :\n', game.get_board_matrix()[1])
+                    print('Indicators :\n', game.get_state()[49:])
+                    print('Snake : ',game.snake)
             
             if make_step :
                 next_state, reward, done, _ = game.step(action)
                 total_reward+=reward
+                print('close wall :', game.calculate_wall_reward())
                 make_step=False
             
-            game.render(True,total_reward,12)
+            game.render(True, total_reward, 12)
 
             if done:
-                game.reset(100,10)
+                game.reset(max_steps = 100, N = GLOBAL_N, length= 6)
                 total_reward=0
                 done = False
