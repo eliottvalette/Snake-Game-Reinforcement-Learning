@@ -14,8 +14,8 @@ device='cpu'
 print("Using ", device)
 
 # Hyperparameters
-EPISODES = 10_000
-GAMMA = 0.99
+EPISODES = 4_000
+GAMMA = 0.995
 ALPHA = 0.005
 GLOBAL_N = 11
 
@@ -28,7 +28,7 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(42)
 
 RENDER = False 
-LOAD_MODEL = False
+LOAD_MODEL = True
 
 # Create the game environment
 env = SnakeGame()
@@ -57,7 +57,7 @@ total_reward_to_plot = 0
 for episode in range(EPISODES):
     max_steps = 1000
     env.n = GLOBAL_N
-    epsilon = max(0.01, (0.9993 ** episode))
+    epsilon = max(0.01, (0.99 ** episode))
     env.epsilon = epsilon
 
     print(f'Randomness : {epsilon*100:.2f}%')

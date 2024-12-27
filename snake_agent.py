@@ -66,9 +66,9 @@ class SnakeAgent(nn.Module):
 
         fork_1 = rd.random()
         fork_2 = rd.random()
-        if fork_1 < 0.3 and fork_2 < 0.5:
+        if fork_1 < 0.4 and fork_2 < 0.2:
             matrix_out = torch.zeros_like(matrix_out)
-        elif fork_1 < 0.3 :
+        elif fork_1 < 0.4 :
             indicator_out = torch.zeros_like(indicator_out)
 
 

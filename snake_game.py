@@ -285,6 +285,7 @@ class SnakeGame:
         if self.lost():
             if self.position in self.snake[1:]:
                 print('Rolled over on itself!')
+                reward -= 300 
             else:
                 print('Hit the wall!')
             reward -= 100  # Penalty for losing
