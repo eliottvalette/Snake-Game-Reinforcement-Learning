@@ -26,18 +26,22 @@ class SnakeAgent(nn.Module):
         self.loss_fn = nn.MSELoss()
         if load_model:
             print("Loading model weights...")
-            self.model.load_state_dict(torch.load("Agents/trained_agent.pth"))
+            self.model.load_state_dict(torch.load("Agents/trained_agent.pth", weights_only=True))
 
     def build_model(self):
         self.matrix_net = nn.Sequential(
             nn.Linear(self.matrix_size, 64),
-            nn.Linear(64, 64),
+            nn.Linear(64, 128),
+            nn.Linear(128, 128),
+            nn.Linear(128, 64),
             nn.Linear(64, 32),
         ).to(self.device) 
         
         self.indicator_net = nn.Sequential(
             nn.Linear(self.indicator_size, 64),
-            nn.Linear(64, 64),
+            nn.Linear(64, 128),
+            nn.Linear(128, 128),
+            nn.Linear(128, 64),
             nn.Linear(64, 32),
         ).to(self.device) 
         
@@ -57,9 +61,16 @@ class SnakeAgent(nn.Module):
 
         matrix_part, indicator_part = state[:self.matrix_size].to(self.device), state[self.matrix_size:].to(self.device)
 
-
         matrix_out = self.matrix_net(matrix_part)
         indicator_out = self.indicator_net(indicator_part)
+
+        fork_1 = rd.random()
+        fork_2 = rd.random()
+        if fork_1 < 0.3 and fork_2 < 0.5:
+            matrix_out = torch.zeros_like(matrix_out)
+        elif fork_1 < 0.3 :
+            indicator_out = torch.zeros_like(indicator_out)
+
 
         combined_out = torch.cat((matrix_out, indicator_out))
         return self.model(combined_out)

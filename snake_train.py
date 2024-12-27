@@ -14,7 +14,7 @@ device='cpu'
 print("Using ", device)
 
 # Hyperparameters
-EPISODES = 5_000
+EPISODES = 10_000
 GAMMA = 0.99
 ALPHA = 0.005
 GLOBAL_N = 11
@@ -57,7 +57,7 @@ total_reward_to_plot = 0
 for episode in range(EPISODES):
     max_steps = 1000
     env.n = GLOBAL_N
-    epsilon = max(0.01, (0.999 ** episode))
+    epsilon = max(0.01, (0.9993 ** episode))
     env.epsilon = epsilon
 
     print(f'Randomness : {epsilon*100:.2f}%')
@@ -133,7 +133,7 @@ if input("Test ? (y or n) : ") == 'y':
             next_state, reward, done, _ = env.step(action)
             agent.train_model(state, action, reward, next_state, done)
 
-            env.render(True, total_reward, 150)
+            env.render(True, total_reward, 15)
 
             total_reward += reward
             steps += 1
