@@ -257,9 +257,9 @@ class SnakeGame:
         current_distance_from_food = np.linalg.norm(np.array(self.position) - np.array(self.food))
 
         # Distance-based reward: Encourage moving towards food
-        if current_distance_from_food < previous_distance_from_food and self.steps_after_food > 10:
+        if current_distance_from_food < previous_distance_from_food:
             reward += 1  # Reward for moving closer to the food
-        elif current_distance_from_food > previous_distance_from_food and self.steps_after_food > 10:
+        elif current_distance_from_food > previous_distance_from_food:
             reward -= 1  # Penalty for moving away from the food
 
         # Check if the snake has reached the food
@@ -284,9 +284,9 @@ class SnakeGame:
         # Use the better estimator to calculate the reward
         snake_score = better_estimator(self.snake, self.n, self.n)
         if self.steps_after_food > 10 :
-            reward += (snake_score - 0.1) * 5
+            reward += snake_score * 5
         else :
-            reward += (snake_score - 0.1) * 20
+            reward += snake_score * 20
 
         # Check if the snake is done
         if self.lost():
