@@ -14,8 +14,8 @@ device='cpu'
 print("Using ", device)
 
 # Hyperparameters
-EPISODES = 4_000
-GAMMA = 0.995
+EPISODES = 0
+GAMMA = 0.992
 ALPHA = 0.005
 GLOBAL_N = 11
 
@@ -55,9 +55,9 @@ total_reward_to_plot = 0
 
 # Training loop
 for episode in range(EPISODES):
-    max_steps = 1000
+    max_steps = 1_000
     env.n = GLOBAL_N
-    epsilon = max(0.01, (0.99 ** episode))
+    epsilon = max(0.01, (0.9995 ** episode))
     env.epsilon = epsilon
 
     print(f'Randomness : {epsilon*100:.2f}%')

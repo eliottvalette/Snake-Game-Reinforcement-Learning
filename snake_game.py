@@ -4,6 +4,7 @@ import numpy as np
 import random as rd
 import time
 from hard_code_pattern_11 import pattern_11
+from better_estimator import better_estimator
 
 GLOBAL_N = 11
 INITIAL_WALLS = 0
@@ -36,7 +37,7 @@ class SnakeGame:
         self.direction = RIGHT # starts lookig right
         self.previous_action = [1,1] # 2 previous actions, initial set as straight - straight
         self.epsilon = 1
-        self.step_after_food = 0
+        self.steps_after_food = 0
         self.viable_pattern = pattern_11
         for _ in range (INITIAL_WALLS):
             self.add_wall()
@@ -55,7 +56,7 @@ class SnakeGame:
         self.max_steps = max_steps
         self.direction = RIGHT
         self.previous_action = [1,1]
-        self.step_after_food = 0
+        self.steps_after_food = 0
         for _ in range (INITIAL_WALLS):
             self.add_wall()
 
@@ -235,7 +236,6 @@ class SnakeGame:
         else:
             reward = 0 
 
-
         return reward
 
 
@@ -257,9 +257,9 @@ class SnakeGame:
         current_distance_from_food = np.linalg.norm(np.array(self.position) - np.array(self.food))
 
         # Distance-based reward: Encourage moving towards food
-        if current_distance_from_food < previous_distance_from_food:
+        if current_distance_from_food < previous_distance_from_food and self.steps_after_food > 10:
             reward += 1  # Reward for moving closer to the food
-        elif current_distance_from_food > previous_distance_from_food:
+        elif current_distance_from_food > previous_distance_from_food and self.steps_after_food > 10:
             reward -= 1  # Penalty for moving away from the food
 
         # Check if the snake has reached the food
@@ -268,7 +268,7 @@ class SnakeGame:
             self.snake.insert(0, self.position)  # Extend the snake
             self.food = self.generate_food()  # Generate new food
             reward += 50  # Reward for eating food
-            self.step_after_food = 0  # Reset step count after food
+            self.steps_after_food = 0  # Reset step count after food
             self.visited = []  # Reset visited positions after eating food
         else:
             self.snake.insert(0, self.position)
@@ -280,6 +280,13 @@ class SnakeGame:
         else:
             reward += 0.5
             self.visited.append(self.position)
+
+        # Use the better estimator to calculate the reward
+        snake_score = better_estimator(self.snake, self.n, self.n)
+        if self.steps_after_food > 10 :
+            reward += (snake_score - 0.1) * 5
+        else :
+            reward += (snake_score - 0.1) * 20
 
         # Check if the snake is done
         if self.lost():
@@ -296,7 +303,7 @@ class SnakeGame:
         else:
             done = False
 
-        self.step_after_food += 1
+        self.steps_after_food += 1
         self.previous_action.pop(0)
         self.previous_action.append(action)
 
@@ -403,6 +410,6 @@ if __name__ == "__main__":
             game.render(True, total_reward, 12)
 
             if done:
-                game.reset(max_steps = 100, N = GLOBAL_N, length= 6)
+                game.reset(max_steps = 1000, N = GLOBAL_N, length= 6)
                 total_reward=0
                 done = False
