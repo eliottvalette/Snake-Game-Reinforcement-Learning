@@ -4,7 +4,6 @@ import numpy as np
 import random as rd
 import time
 from hard_code_pattern_11 import pattern_11
-from better_estimator import better_estimator
 
 GLOBAL_N = 11
 INITIAL_WALLS = 0
@@ -178,7 +177,7 @@ class SnakeGame:
 
 
     def shrink_matrix(self, matrix):
-        shrink = (self.n - 7) // 2
+        shrink = (self.n - 11) // 2
         if shrink != 0 :
             matrix = matrix[shrink : -shrink, shrink : -shrink]
         return matrix
@@ -240,7 +239,7 @@ class SnakeGame:
 
 
     def step(self, action):
-        reward = -0.5  # Base reward for taking a step
+        reward = +0.5  # Base reward for taking a step
 
         previous_distance_from_food = np.linalg.norm(np.array(self.position) - np.array(self.food))
 
@@ -258,16 +257,16 @@ class SnakeGame:
 
         # Distance-based reward: Encourage moving towards food
         if current_distance_from_food < previous_distance_from_food:
-            reward += 1  # Reward for moving closer to the food
+            reward += 1.5  # Reward for moving closer to the food
         elif current_distance_from_food > previous_distance_from_food:
-            reward -= 1  # Penalty for moving away from the food
+            reward -= 0.5  # Penalty for moving away from the food
 
         # Check if the snake has reached the food
         if self.position == self.food:
             print("Food reached!")
             self.snake.insert(0, self.position)  # Extend the snake
             self.food = self.generate_food()  # Generate new food
-            reward += 50  # Reward for eating food
+            reward += 100  # Reward for eating food
             self.steps_after_food = 0  # Reset step count after food
             self.visited = []  # Reset visited positions after eating food
         else:
@@ -281,21 +280,13 @@ class SnakeGame:
             reward += 0.5
             self.visited.append(self.position)
 
-        # Use the better estimator to calculate the reward
-        snake_score = better_estimator(self.snake, self.n, self.n)
-        if self.steps_after_food > 10 :
-            reward += snake_score * 5
-        else :
-            reward += snake_score * 20
-
         # Check if the snake is done
         if self.lost():
             if self.position in self.snake[1:]:
                 print('Rolled over on itself!')
-                reward -= 300 
             else:
                 print('Hit the wall!')
-            reward -= 100  # Penalty for losing
+            reward -= 600  # Penalty for losing
             done = True
         elif self.steps_taken >= self.max_steps:
             done = True
@@ -310,7 +301,7 @@ class SnakeGame:
         return self.get_state(), reward, done, {}
 
     def get_state(self):
-        board_matrix = np.array(self.get_board_matrix()[0]).flatten() # 7x7 matrix (49)
+        board_matrix = np.array(self.get_board_matrix()[0]).flatten() # 11x11 matrix (121)
         distance_to_walls = self.get_danger() # is the wall on the left - ahead - right same for the snake itself (6)
         distance_to_food = self.get_where_food() # is it on the ahead, is it right, is it on the left(3)
         snake_direction = self.get_direction_array() # direction (4)
@@ -398,7 +389,7 @@ if __name__ == "__main__":
                 elif event.key == pygame.K_s:
                     print('State :', game.get_state())
                     print('Board :\n', game.get_board_matrix()[1])
-                    print('Indicators :\n', game.get_state()[49:])
+                    print('Indicators :\n', game.get_state()[121:])
                     print('Snake : ',game.snake)
             
             if make_step :

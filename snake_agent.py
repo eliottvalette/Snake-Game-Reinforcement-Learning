@@ -30,27 +30,31 @@ class SnakeAgent(nn.Module):
 
     def build_model(self):
         self.matrix_net = nn.Sequential(
-            nn.Linear(self.matrix_size, 64),
-            nn.Linear(64, 128),
-            nn.Linear(128, 128),
-            nn.Linear(128, 64),
-            nn.Linear(64, 32),
-        ).to(self.device) 
+            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=0),  # (1, 11, 11) -> (32, 9, 9)
+            nn.ReLU(),
+            nn.BatchNorm2d(32),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=0),  # (32, 9, 9) -> (64, 7, 7)
+            nn.ReLU(),
+            nn.BatchNorm2d(64),
+            nn.MaxPool2d(kernel_size=2, stride=2),                 # (64, 7, 7) -> (64, 3, 3)
+            nn.Flatten()
+        ).to(self.device)
         
         self.indicator_net = nn.Sequential(
             nn.Linear(self.indicator_size, 64),
-            nn.Linear(64, 128),
-            nn.Linear(128, 128),
-            nn.Linear(128, 64),
-            nn.Linear(64, 32),
+            nn.Linear(64, 64)
         ).to(self.device) 
         
-        combined_size = 32 + 32
+        combined_size = 64 + 576
         
         final_net = nn.Sequential(
-            nn.Linear(combined_size, 64),
+            nn.Linear(combined_size, 256),
             nn.ReLU(), 
-            nn.Linear(64, 32),
+            nn.Linear(256, 128),
+            nn.ReLU(), 
+            nn.Linear(128, 128),
+            nn.ReLU(), 
+            nn.Linear(128, 32),
             nn.ReLU(), 
             nn.Linear(32, self.action_size), 
         ).to(self.device) 
@@ -60,8 +64,7 @@ class SnakeAgent(nn.Module):
     def forward(self, state):
 
         matrix_part, indicator_part = state[:self.matrix_size].to(self.device), state[self.matrix_size:].to(self.device)
-
-        matrix_out = self.matrix_net(matrix_part)
+        matrix_out = self.matrix_net(matrix_part.reshape(1, 1, 11, 11)).squeeze(0)
         indicator_out = self.indicator_net(indicator_part)
 
         fork_1 = rd.random()
@@ -77,9 +80,9 @@ class SnakeAgent(nn.Module):
 
 
     def get_exploration_options(self, state):
-        is_left_viable  = int(state[49] == 0 and state[50] == 0)
-        is_ahead_viable = int(state[51] == 0 and state[52] == 0)
-        is_right_viable = int(state[53] == 0 and state[54] == 0)
+        is_left_viable  = int(state[121] == 0 and state[122] == 0)
+        is_ahead_viable = int(state[123] == 0 and state[124] == 0)
+        is_right_viable = int(state[125] == 0 and state[126] == 0)
         return [is_left_viable, is_ahead_viable, is_right_viable]
 
     def get_action(self, state, epsilon):

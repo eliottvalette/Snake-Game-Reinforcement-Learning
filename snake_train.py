@@ -14,8 +14,8 @@ device='cpu'
 print("Using ", device)
 
 # Hyperparameters
-EPISODES = 0 # 2_000
-GAMMA = 0.992
+EPISODES = 12_000
+GAMMA = 1
 ALPHA = 0.005
 GLOBAL_N = 11
 
@@ -28,7 +28,7 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(42)
 
 RENDER = False 
-LOAD_MODEL = True
+LOAD_MODEL = False
 
 # Create the game environment
 env = SnakeGame()
@@ -36,9 +36,9 @@ env = SnakeGame()
 # Create the Q-learning agent
 agent = SnakeAgent(
     state_size=63,
-    matrix_size = 49,
-    indicator_size = 13,
     action_size=3,
+    matrix_size = 121,
+    indicator_size = 13,
     gamma = GAMMA,
     learning_rate = ALPHA,
     load_model = LOAD_MODEL,
@@ -57,7 +57,7 @@ total_reward_to_plot = 0
 for episode in range(EPISODES):
     max_steps = 1_000
     env.n = GLOBAL_N
-    epsilon = max(0.01, (0.998 ** episode))
+    epsilon = max(0.01, (0.9997 ** episode))
     env.epsilon = epsilon
 
     print(f'Randomness : {epsilon*100:.2f}%')
@@ -102,9 +102,9 @@ for episode in range(EPISODES):
 # Plotting section
 episodes = range(EPISODES)
 plt.figure(figsize=(10, 5))
-plt.plot(episodes, plot_scores, label='Scores')
-plt.plot(episodes, plot_mean_scores, label='Mean Scores')
-plt.plot(episodes, plot_mean_steps, label='Mean Steps')
+plt.scatter(episodes, plot_scores, label='Scores', color='blue', s=10, alpha=0.5)
+plt.plot(episodes, plot_mean_scores, label='Mean Scores', color='red')
+plt.plot(episodes, plot_mean_steps, label='Mean Steps', color='green')
 plt.xlabel('Episodes')
 plt.ylabel('Score')
 plt.title('Training Progress')
