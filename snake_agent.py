@@ -101,7 +101,7 @@ class SnakeAgent(nn.Module):
         q_values = self.forward(state)
         
         return torch.argmax(q_values).item()
-    
+
     def train_model(self, state, action, reward, next_state, done):
         state = torch.FloatTensor(state).to(self.device)
         next_state = torch.FloatTensor(next_state).to(self.device)
@@ -109,20 +109,38 @@ class SnakeAgent(nn.Module):
         action = torch.LongTensor([action]).to(self.device)
         done = torch.FloatTensor([done]).to(self.device)
 
+        # Forward pass for Q-values
         q_values = self.forward(state)
-        
         current_q_value = q_values.gather(0, action)
-
         next_q_values = self.forward(next_state)
         max_next_q_value = torch.max(next_q_values).detach()
-
         target_q_value = reward + (1 - done) * self.gamma * max_next_q_value
 
+        # Loss and optimization
         loss = self.loss_fn(current_q_value, target_q_value)
-
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        # Collect metrics
+        approx_kl = (q_values - current_q_value).mean().item()
+        entropy_loss = -torch.mean(q_values * torch.log_softmax(q_values, dim=0)).item()
+        value_loss = self.loss_fn(current_q_value, target_q_value).item()
+        std = q_values.std().item()
+        clip_fraction = torch.mean((torch.abs(current_q_value - target_q_value) > 0.2).float()).item()
+
+        metrics = {
+            "approx_kl": approx_kl,
+            "entropy_loss": entropy_loss,
+            "value_loss": value_loss,
+            "std": std,
+            "clip_fraction": clip_fraction,
+            "learning_rate": self.optimizer.param_groups[0]["lr"],
+            "loss": loss.item(),
+        }
+
+        return metrics
+
     
 
     def remember(self, state, action, reward, next_state, done):

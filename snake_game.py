@@ -263,7 +263,7 @@ class SnakeGame:
 
         # Check if the snake has reached the food
         if self.position == self.food:
-            print("Food reached!")
+            # print("Food reached!")
             self.snake.insert(0, self.position)  # Extend the snake
             self.food = self.generate_food()  # Generate new food
             reward += 100  # Reward for eating food
@@ -283,14 +283,16 @@ class SnakeGame:
         # Check if the snake is done
         if self.lost():
             if self.position in self.snake[1:]:
-                print('Rolled over on itself!')
+                # print('Rolled over on itself!')
+                pass
             else:
-                print('Hit the wall!')
+                # print('Hit the wall!')
+                pass
             reward -= 600  # Penalty for losing
             done = True
         elif self.steps_taken >= self.max_steps:
             done = True
-            print('Reached max steps')
+            # print('Reached max steps')
         else:
             done = False
 

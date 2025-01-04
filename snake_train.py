@@ -7,6 +7,7 @@ import time
 from snake_agent import SnakeAgent
 from snake_game import SnakeGame
 import matplotlib.pyplot as plt
+from print_format import print_box
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
@@ -14,8 +15,8 @@ device='cpu'
 print("Using ", device)
 
 # Hyperparameters
-EPISODES = 12_000
-GAMMA = 1
+EPISODES = 6_000
+GAMMA = 1.0
 ALPHA = 0.005
 GLOBAL_N = 11
 
@@ -45,6 +46,7 @@ agent = SnakeAgent(
     device=device
 )
 
+# Plotting variables
 plot_scores = []
 plot_mean_scores = []
 plot_mean_steps = []
@@ -53,16 +55,19 @@ total_score = 0
 total_steps = 0
 total_reward_to_plot = 0
 
+# Tracking variables
+training_metrics = {key: [] for key in ["approx_kl", "entropy_loss", "value_loss", "std", "clip_fraction", "learning_rate", "loss"]}
+
 # Training loop
 for episode in range(EPISODES):
-    max_steps = 1_000
+    max_steps = 400
     env.n = GLOBAL_N
-    epsilon = max(0.01, (0.9997 ** episode))
+    epsilon = max(0.01, min((0.998 ** episode), 0.1))
     env.epsilon = epsilon
 
-    print(f'Randomness : {epsilon*100:.2f}%')
+    # print(f'Randomness : {epsilon*100:.2f}%')
 
-    length = 5 # rd.randint(0, 5)
+    length = 5
 
     env.reset(max_steps = max_steps, N = env.n, length= length)
     done = False
@@ -74,11 +79,12 @@ for episode in range(EPISODES):
 
         action = agent.get_action(state, epsilon)
         next_state, reward, done, _ = env.step(action)
-        agent.remember(state, action, reward, next_state, done)
-        agent.train_model(state, action, reward, next_state, done)
+
+        metrics = agent.train_model(state, action, reward, next_state, done)
+        for key, value in metrics.items():
+            training_metrics[key].append(value)
 
         env.render(RENDER, total_reward, 2000)
-
         total_reward += reward
         steps += 1
     
@@ -93,11 +99,33 @@ for episode in range(EPISODES):
     plot_mean_scores.append(mean_score)
     plot_mean_steps.append(mean_steps)
     plot_mean_reward.append(mean_reward)
-        
-    if episode % 2000 == 1999:
+
+    # Log metrics
+    if (episode + 1) % 100 == 0:
+        mean_metrics = {key: np.mean(values) for key, values in training_metrics.items()}
+        print_box(episode + 1, mean_metrics)
+
+    # Reset metrics periodically
+    if episode % 100 == 99:
+        training_metrics = {key: [] for key in training_metrics}
+    
+    # Save model periodically    
+    if episode % 1000 == 999:
         torch.save(agent.model.state_dict(), f"Agents/trained_agent_epoch_{episode+1}.pth")
 
-    print(f'Episode: {episode + 1}, Total Reward: {total_reward}, Steps: {steps}, Length: {len(env.snake)}')
+        # Temporary plot
+        episodes = range(len(plot_scores))
+        plt.figure(figsize=(10, 5))
+        plt.scatter(episodes, plot_scores, label='Scores', color='blue', s=10, alpha=0.5)
+        plt.plot(episodes, plot_mean_scores, label='Mean Scores', color='red')
+        plt.plot(episodes, plot_mean_steps, label='Mean Steps', color='green')
+        plt.xlabel('Episodes')
+        plt.ylabel('Score')
+        plt.title('Training Progress')
+        plt.legend()
+        plt.savefig(f'Training graphs/graph_temp_{len(plot_scores)}.pdf')
+
+    # print(f'Episode: {episode + 1}, Total Reward: {total_reward}, Steps: {steps}, Length: {len(env.snake)}')
 
 # Plotting section
 episodes = range(EPISODES)
@@ -119,7 +147,7 @@ if input("Test ? (y or n) : ") == 'y':
         env.n = GLOBAL_N
         epsilon = 0.0
         env.epsilon = epsilon
-        print(f'Randomness : {epsilon*100:.2f}%')
+        # print(f'Randomness : {epsilon*100:.2f}%')
 
         env.reset(max_steps = max_steps, N = env.n, length = 5)
         done = False
@@ -138,6 +166,6 @@ if input("Test ? (y or n) : ") == 'y':
             total_reward += reward
             steps += 1
         
-        print(f'Episode: {episode + 1}, Total Reward: {total_reward:7}, Steps: {steps:3}')
+        # print(f'Episode: {episode + 1}, Total Reward: {total_reward:7}, Steps: {steps:3}')
 
 plt.show()
