@@ -29,28 +29,33 @@ class SnakeAgent(nn.Module):
             self.model.load_state_dict(torch.load("Agents/trained_agent.pth", weights_only=True))
 
     def build_model(self):
-        self.matrix_net = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=0),  # (1, 11, 11) -> (32, 9, 9)
+        self.matrix_vision = nn.Sequential(
+            nn.Conv2d(1, 3, kernel_size=3, stride=1, padding=1),  # (1, 11, 11) -> (3, 11, 11)
             nn.ReLU(),
-            nn.BatchNorm2d(32),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=0),  # (32, 9, 9) -> (64, 7, 7)
-            nn.ReLU(),
-            nn.BatchNorm2d(64),
-            nn.MaxPool2d(kernel_size=2, stride=2),                 # (64, 7, 7) -> (64, 3, 3)
-            nn.Flatten()
+            nn.BatchNorm2d(3),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # (3, 11, 11) -> (3, 5, 5) 
+            nn.Flatten(),
+            nn.Linear(75, 128),
+            nn.Linear(128, 64),
         ).to(self.device)
+
+        self.matrix_net = nn.Sequential(
+            nn.Linear(self.matrix_size * self.matrix_size, 64),
+            nn.Linear(64, 128),
+            nn.Linear(128, 64),
+            nn.Linear(64, 32),
+        ).to(self.device)
+
         
         self.indicator_net = nn.Sequential(
             nn.Linear(self.indicator_size, 64),
             nn.Linear(64, 64)
         ).to(self.device) 
         
-        combined_size = 64 + 576
+        combined_size = 64 + 32 + 64 
         
         final_net = nn.Sequential(
-            nn.Linear(combined_size, 256),
-            nn.ReLU(), 
-            nn.Linear(256, 128),
+            nn.Linear(combined_size, 128),
             nn.ReLU(), 
             nn.Linear(128, 128),
             nn.ReLU(), 
@@ -62,22 +67,13 @@ class SnakeAgent(nn.Module):
         return final_net
     
     def forward(self, state):
-
-        matrix_part, indicator_part = state[:self.matrix_size].to(self.device), state[self.matrix_size:].to(self.device)
-        matrix_out = self.matrix_net(matrix_part.reshape(1, 1, 11, 11)).squeeze(0)
+        matrix_part, indicator_part = state[:-self.indicator_size].to(self.device), state[-self.indicator_size:].to(self.device)
+        matrix_net_out = self.matrix_net(matrix_part)
+        matrix_vision_out = self.matrix_vision(matrix_part.reshape(1, 1, 11, 11)).squeeze(0)
         indicator_out = self.indicator_net(indicator_part)
 
-        fork_1 = rd.random()
-        fork_2 = rd.random()
-        if fork_1 < 0.4 and fork_2 < 0.2:
-            matrix_out = torch.zeros_like(matrix_out)
-        elif fork_1 < 0.4 :
-            indicator_out = torch.zeros_like(indicator_out)
-
-
-        combined_out = torch.cat((matrix_out, indicator_out))
+        combined_out = torch.cat((matrix_net_out, matrix_vision_out, indicator_out))
         return self.model(combined_out)
-
 
     def get_exploration_options(self, state):
         is_left_viable  = int(state[121] == 0 and state[122] == 0)
@@ -120,6 +116,7 @@ class SnakeAgent(nn.Module):
         loss = self.loss_fn(current_q_value, target_q_value)
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
         self.optimizer.step()
 
         # Collect metrics
@@ -127,16 +124,14 @@ class SnakeAgent(nn.Module):
         entropy_loss = -torch.mean(q_values * torch.log_softmax(q_values, dim=0)).item()
         value_loss = self.loss_fn(current_q_value, target_q_value).item()
         std = q_values.std().item()
-        clip_fraction = torch.mean((torch.abs(current_q_value - target_q_value) > 0.2).float()).item()
 
         metrics = {
             "approx_kl": approx_kl,
             "entropy_loss": entropy_loss,
             "value_loss": value_loss,
             "std": std,
-            "clip_fraction": clip_fraction,
             "learning_rate": self.optimizer.param_groups[0]["lr"],
-            "loss": loss.item(),
+            "loss": loss,
         }
 
         return metrics
