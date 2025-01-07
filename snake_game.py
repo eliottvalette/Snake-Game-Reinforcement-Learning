@@ -252,9 +252,9 @@ class SnakeGame:
 
         # Distance-based reward: Encourage moving towards food
         if current_distance_from_food < previous_distance_from_food and action == 1:
-            reward += 2.5  # Reward for moving closer to the food
+            reward += 3.5  # Reward for moving closer to the food
         elif current_distance_from_food < previous_distance_from_food and action != 1:
-            reward += 1.5
+            reward += 1
         elif current_distance_from_food > previous_distance_from_food:
             reward -= 0.5  # Penalty for moving away from the food
 

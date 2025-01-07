@@ -16,7 +16,7 @@ device = 'cpu'
 print("Using ", device)
 
 # Hyperparameters
-EPISODES = 6_000
+EPISODES = 0 # 6_000
 GAMMA = 0.99
 ALPHA = 0.003
 GLOBAL_N = 11
@@ -67,7 +67,7 @@ def moving_average(data, window_size):
 for episode in range(EPISODES):
     max_steps = 1000
     env.n = GLOBAL_N
-    epsilon = max(0.01, 0.1 * 0.999 ** episode)
+    epsilon = max(0.00, 0.99 ** episode)
     env.epsilon = epsilon
 
     # print(f'Randomness : {epsilon*100:.2f}%')
