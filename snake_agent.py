@@ -36,23 +36,27 @@ class SnakeAgent(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),  # (3, 11, 11) -> (3, 5, 5) 
             nn.Flatten(),
             nn.Linear(75, 128),
-            nn.Linear(128, 64),
+            nn.Linear(128, 32),
         ).to(self.device)
 
         self.matrix_net = nn.Sequential(
             nn.Linear(self.matrix_size * self.matrix_size, 64),
             nn.Linear(64, 128),
+            nn.Linear(128, 128),
             nn.Linear(128, 64),
             nn.Linear(64, 32),
-        ).to(self.device)
+        ).to(self.device) 
 
         
         self.indicator_net = nn.Sequential(
             nn.Linear(self.indicator_size, 64),
-            nn.Linear(64, 64)
+            nn.Linear(64, 128),
+            nn.Linear(128, 128),
+            nn.Linear(128, 64),
+            nn.Linear(64, 32),
         ).to(self.device) 
-        
-        combined_size = 64 + 32 + 64 
+
+        combined_size = 32 + 32 + 32 
         
         final_net = nn.Sequential(
             nn.Linear(combined_size, 128),

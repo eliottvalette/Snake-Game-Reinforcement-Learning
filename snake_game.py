@@ -256,41 +256,30 @@ class SnakeGame:
         current_distance_from_food = np.linalg.norm(np.array(self.position) - np.array(self.food))
 
         # Distance-based reward: Encourage moving towards food
-        if current_distance_from_food < previous_distance_from_food:
-            reward += 1.5  # Reward for moving closer to the food
+        if current_distance_from_food < previous_distance_from_food and action == 1:
+            reward += 2.5  # Reward for moving closer to the food
+        elif current_distance_from_food < previous_distance_from_food and action != 1:
+            reward += 1.5
         elif current_distance_from_food > previous_distance_from_food:
             reward -= 0.5  # Penalty for moving away from the food
 
         # Check if the snake has reached the food
         if self.position == self.food:
-            # print("Food reached!")
             self.snake.insert(0, self.position)  # Extend the snake
             self.food = self.generate_food()  # Generate new food
-            reward += 100  # Reward for eating food
+            reward += 150  # Reward for eating food
             self.steps_after_food = 0  # Reset step count after food
             self.visited = []  # Reset visited positions after eating food
         else:
             self.snake.insert(0, self.position)
             self.snake.pop()  # Remove the tail if no food was eaten
 
-        # Penalize the snake for visiting the same position multiple times
-        if self.position in self.visited:
-            reward -= 1
-        else:
-            reward += 0.5
-            self.visited.append(self.position)
-
         # Check if the snake is done
         if self.lost():
-            if self.position in self.snake[1:]:
-                # print('Rolled over on itself!')
-                pass
-            else:
-                # print('Hit the wall!')
-                pass
             reward -= 600  # Penalty for losing
             done = True
         elif self.steps_taken >= self.max_steps:
+            reward -= 300 
             done = True
             # print('Reached max steps')
         else:
