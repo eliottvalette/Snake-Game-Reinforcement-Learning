@@ -146,9 +146,6 @@ class SnakeGame:
             danger.append(int(snake_body_danger))          
         return np.array(danger)
 
-
-    
-
     def get_where_food(self):
         # Calculate the relative position of the food with respect to the head of the snake
         relative_food_x = self.food[0] - self.position[0]
@@ -173,8 +170,6 @@ class SnakeGame:
             where_food.append(int(food_ahead))
 
         return np.array(where_food)
-
-
 
     def shrink_matrix(self, matrix):
         shrink = (self.n - 11) // 2
@@ -296,43 +291,118 @@ class SnakeGame:
         distance_to_walls = self.get_danger() # is the wall on the left - ahead - right same for the snake itself (6)
         distance_to_food = self.get_where_food() # is it on the ahead, is it right, is it on the left(3)
         snake_direction = self.get_direction_array() # direction (4)
-        full_state = np.concatenate((board_matrix, distance_to_walls, distance_to_food, snake_direction)) 
+        full_state = np.concatenate((board_matrix, distance_to_walls, distance_to_food, snake_direction))
+        full_state = np.where(full_state == 0, 0.01, full_state)  # Replace 0 with 0.01
         
         return full_state
 
-    def render(self,rendering,reward,clock):
-        if rendering :
-            self.screen.fill((211, 211, 211)) # cream
+    def render(self, rendering, reward, clock):
+        if rendering:
+            # Fill background with a gradient effect
+            self.screen.fill((240, 240, 240))  # Light gray base
+            
+            # Draw grid lines for better visibility
+            for i in range(self.n + 1):
+                pygame.draw.line(self.screen, (200, 200, 200), 
+                            (i * self.CELL_SIZE, 0), 
+                            (i * self.CELL_SIZE, self.WINDOW_HEIGHT))
+                pygame.draw.line(self.screen, (200, 200, 200), 
+                            (0, i * self.CELL_SIZE), 
+                            (self.WINDOW_WIDTH, i * self.CELL_SIZE))
 
-            # Draw the snake segments
+            # Draw snake body with gradient effect
             for i, segment in enumerate(self.snake):
-                segment_color = (27, 132, 10) if i == 0 else (62, 232, 0)  # Head is darker grey
-                pygame.draw.rect(self.screen, segment_color, (segment[0], segment[1], self.CELL_SIZE, self.CELL_SIZE))
-                pygame.draw.rect(self.screen, (0, 0, 0), (segment[0], segment[1], self.CELL_SIZE, self.CELL_SIZE), 2)  # Black outline
+                # Create gradient from tail to head
+                intensity = min(255, 100 + (155 * i / len(self.snake)))
+                body_color = (0, intensity, 0)
+                
+                # Draw rounded rectangle for each segment
+                rect = pygame.Rect(segment[0], segment[1], self.CELL_SIZE, self.CELL_SIZE)
+                pygame.draw.rect(self.screen, body_color, rect, border_radius=self.CELL_SIZE // 4)
+                pygame.draw.rect(self.screen, (0, 100, 0), rect, 2, border_radius=self.CELL_SIZE // 4)
+                
+                # Add eyes to head
+                if i == 0:
+                    eye_radius = self.CELL_SIZE // 6
+                    eye_offset = self.CELL_SIZE // 4
+                    
+                    # Determine eye positions based on direction
+                    if self.direction == RIGHT:
+                        left_eye = (segment[0] + self.CELL_SIZE - eye_offset, segment[1] + eye_offset)
+                        right_eye = (segment[0] + self.CELL_SIZE - eye_offset, segment[1] + self.CELL_SIZE - eye_offset)
+                    elif self.direction == LEFT:
+                        left_eye = (segment[0] + eye_offset, segment[1] + eye_offset)
+                        right_eye = (segment[0] + eye_offset, segment[1] + self.CELL_SIZE - eye_offset)
+                    elif self.direction == UP:
+                        left_eye = (segment[0] + eye_offset, segment[1] + eye_offset)
+                        right_eye = (segment[0] + self.CELL_SIZE - eye_offset, segment[1] + eye_offset)
+                    else:  # DOWN
+                        left_eye = (segment[0] + eye_offset, segment[1] + self.CELL_SIZE - eye_offset)
+                        right_eye = (segment[0] + self.CELL_SIZE - eye_offset, segment[1] + self.CELL_SIZE - eye_offset)
+                    
+                    pygame.draw.circle(self.screen, (255, 255, 255), left_eye, eye_radius)
+                    pygame.draw.circle(self.screen, (255, 255, 255), right_eye, eye_radius)
+                    pygame.draw.circle(self.screen, (0, 0, 0), left_eye, eye_radius // 2)
+                    pygame.draw.circle(self.screen, (0, 0, 0), right_eye, eye_radius // 2)
 
-            for i, wall in enumerate(self.walls):
-                wall_color = (0, 0, 0)
+            # Draw walls with texture
+            for wall in self.walls:
                 x, y = wall
+                wall_rect = pygame.Rect(x, y, self.CELL_SIZE, self.CELL_SIZE)
+                
+                # Draw main wall block
+                pygame.draw.rect(self.screen, (100, 100, 100), wall_rect)
+                pygame.draw.rect(self.screen, (50, 50, 50), wall_rect, 2)
+                
+                # Add brick pattern
+                brick_offset = self.CELL_SIZE // 3
+                pygame.draw.line(self.screen, (50, 50, 50), 
+                            (x, y + brick_offset), 
+                            (x + self.CELL_SIZE, y + brick_offset))
+                pygame.draw.line(self.screen, (50, 50, 50), 
+                            (x + brick_offset, y), 
+                            (x + brick_offset, y + self.CELL_SIZE))
 
-                # Draw the square
-                pygame.draw.rect(self.screen, wall_color, (x, y, self.CELL_SIZE, self.CELL_SIZE))
+            # Draw food as an apple
+            apple_color = (220, 20, 20)  # Bright red
+            center_x = self.food[0] + self.CELL_SIZE // 2
+            center_y = self.food[1] + self.CELL_SIZE // 2
+            radius = self.CELL_SIZE // 2.5
+            
+            # Draw main apple body
+            pygame.draw.circle(self.screen, apple_color, (center_x, center_y), radius)
+            
+            # Add stem and leaf
+            stem_start = (center_x, center_y - radius)
+            stem_end = (center_x, center_y - radius - self.CELL_SIZE // 6)
+            pygame.draw.line(self.screen, (101, 67, 33), stem_start, stem_end, 2)
+            
+            # Draw leaf
+            leaf_points = [
+                (center_x, stem_end[1]),
+                (center_x + self.CELL_SIZE // 6, stem_end[1] + self.CELL_SIZE // 8),
+                (center_x, stem_end[1] + self.CELL_SIZE // 4)
+            ]
+            pygame.draw.polygon(self.screen, (34, 139, 34), leaf_points)
 
-                # Draw the cross
-                pygame.draw.line(self.screen, (255, 255, 255), (x, y), (x + self.CELL_SIZE, y + self.CELL_SIZE), 2)
-                pygame.draw.line(self.screen, (255, 255, 255), (x + self.CELL_SIZE, y), (x, y + self.CELL_SIZE), 2)
-
-            # Draw the food
-            pygame.draw.circle(self.screen, (255, 0, 0), (self.food[0] + self.CELL_SIZE // 2, self.food[1] + self.CELL_SIZE // 2), self.CELL_SIZE // 3)
-
-            # Draw the text in the top right corner
-            score_font = pygame.font.Font(pygame.font.get_default_font(), 14)
-            score_text = score_font.render(f"Current reward : {reward} Score: {len(self.snake) - 1} Randomness : {self.epsilon*100:.2f}%", True, (0, 0, 0))
+            # Draw score and info panel with better styling
+            panel_height = 30
+            pygame.draw.rect(self.screen, (50, 50, 50), 
+                            (0, 0, self.WINDOW_WIDTH, panel_height))
+            
+            # Create dynamic font
+            score_font = pygame.font.Font(pygame.font.get_default_font(), 16)
+            
+            # Format text with better spacing
+            score_text = score_font.render(
+                f"Score: {len(self.snake) - 1} | Reward: {reward:.1f} | Random: {self.epsilon*100:.1f}%", 
+                True, (255, 255, 255))
             score_rect = score_text.get_rect()
-            score_rect.topright = (self.WINDOW_WIDTH - 10, 10)
+            score_rect.midtop = (self.WINDOW_WIDTH // 2, 5)
             self.screen.blit(score_text, score_rect)
 
             pygame.display.flip()
-            self.clock.tick(clock)  # Increase the frame rate for smoother rendering
+            self.clock.tick(clock)
 
             # Handle events
             for event in pygame.event.get():
@@ -382,11 +452,12 @@ if __name__ == "__main__":
                     print('Board :\n', game.get_board_matrix()[1])
                     print('Indicators :\n', game.get_state()[121:])
                     print('Snake : ',game.snake)
+
+                    print('Food Direction : ', game.get_where_food())
             
             if make_step :
                 next_state, reward, done, _ = game.step(action)
                 total_reward+=reward
-                print('close wall :', game.calculate_wall_reward())
                 make_step=False
             
             game.render(True, total_reward, 12)
