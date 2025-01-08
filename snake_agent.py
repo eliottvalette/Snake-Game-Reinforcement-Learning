@@ -47,16 +47,7 @@ class SnakeAgent(nn.Module):
             nn.Linear(64, 32),
         ).to(self.device) 
 
-        
-        self.indicator_net = nn.Sequential(
-            nn.Linear(self.indicator_size, 64),
-            nn.Linear(64, 128),
-            nn.Linear(128, 128),
-            nn.Linear(128, 64),
-            nn.Linear(64, 32),
-        ).to(self.device) 
-
-        combined_size = 32 + 32 + 32 
+        combined_size = 32 + 32 + self.indicator_size 
         
         final_net = nn.Sequential(
             nn.Linear(combined_size, 128),
@@ -74,9 +65,8 @@ class SnakeAgent(nn.Module):
         matrix_part, indicator_part = state[:-self.indicator_size].to(self.device), state[-self.indicator_size:].to(self.device)
         matrix_net_out = self.matrix_net(matrix_part)
         matrix_vision_out = self.matrix_vision(matrix_part.reshape(1, 1, 11, 11)).squeeze(0)
-        indicator_out = self.indicator_net(indicator_part)
 
-        combined_out = torch.cat((matrix_net_out, matrix_vision_out, indicator_out))
+        combined_out = torch.cat((matrix_net_out, matrix_vision_out, indicator_part))
         return self.model(combined_out)
 
     def get_exploration_options(self, state):
